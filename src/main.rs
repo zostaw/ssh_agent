@@ -36,7 +36,7 @@ impl Process {
             command,
         };
     }
-    fn ssh_request(&self) -> String {
+    async fn ssh_request(&self) -> String {
         let tcp = TcpStream::connect(format!("{}:{}", self.ip, self.port));
         let mut sess = Session::new().unwrap();
         sess.set_tcp_stream(tcp.unwrap());
@@ -75,7 +75,7 @@ async fn main() {
         tokio_tx_handles.push(tokio::spawn(async move {
             loop {
                 std::thread::sleep(DELAY);
-                let _ = tx.send(process.ssh_request());
+                let _ = tx.send(process.ssh_request().await);
             }
         }));
         tokio_rx_handles.push(tokio::spawn(async move {
