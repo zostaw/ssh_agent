@@ -8,7 +8,7 @@ use std::sync::mpsc::channel;
 use serde::{Deserialize, Serialize};
 
 // defines how often to sleep between ssh calls
-const DELAY: std::time::Duration = std::time::Duration::from_secs(0);
+const DELAY: std::time::Duration = std::time::Duration::from_millis(100);
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Process {
@@ -57,7 +57,7 @@ impl Process {
     }
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread", worker_threads = 100)]
 async fn main() {
     let mut hosts_file = File::open("hosts.json")
         .or(File::open("hosts.json.example"))
@@ -67,29 +67,28 @@ async fn main() {
     let mut processes: Vec<Process> =
         serde_json::from_str(&hosts_file_buff).expect("JSON was not well-formatted.");
 
+    println!("{:?}", processes);
     // tx, rx spawn
     let mut tokio_tx_handles = Vec::new();
-    let mut tokio_rx_handles = Vec::new();
+    let (tx, rx) = channel();
     while let Some(process) = processes.pop() {
-        let (tx, rx) = channel();
+        let tx_clone = tx.clone();
         tokio_tx_handles.push(tokio::spawn(async move {
             loop {
                 std::thread::sleep(DELAY);
-                let _ = tx.send(process.ssh_request().await);
-            }
-        }));
-        tokio_rx_handles.push(tokio::spawn(async move {
-            loop {
-                println!("Fetched: {:?}", rx.recv().unwrap());
+                let _ = tx_clone.send(process.ssh_request().await);
             }
         }));
     }
+    let rx_handle = tokio::spawn(async move {
+        loop {
+            println!("Fetched: {:?}", rx.recv().unwrap());
+        }
+    });
 
     // tx, rx await
     while let Some(tx_handle) = tokio_tx_handles.pop() {
         tx_handle.await.unwrap();
     }
-    while let Some(rx_handle) = tokio_rx_handles.pop() {
-        let _ = rx_handle.await;
-    }
+    let _ = rx_handle.await;
 }
