@@ -1,0 +1,8 @@
+[
+    {
+        "username":"mylogin","private_key_path":"/Users/mylogin/.ssh/id_rsa","ip":"127.0.0.1","port":"22","command":"ps -ef | grep ssh"
+    },
+    {
+        "username":"mylogin","private_key_path":"/Users/mylogin/.ssh/id_rsa","ip":"127.0.0.1","port":"22","command":"ls -latr"
+    }
+]

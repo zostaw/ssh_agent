@@ -1,27 +1,33 @@
 use ssh2::Session;
+use std::fs::File;
 use std::io::prelude::*;
 use std::net::TcpStream;
 use std::path::Path;
 use std::sync::mpsc::channel;
 
-const DELAY: std::time::Duration = std::time::Duration::from_secs(1);
+use serde::{Deserialize, Serialize};
 
-struct Process<'a> {
-    username: &'a str,
-    private_key_path: &'a str,
-    ip: &'a str,
-    port: &'a str,
-    command: &'a str,
+// defines how often to sleep between ssh calls
+const DELAY: std::time::Duration = std::time::Duration::from_secs(0);
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Process {
+    username: String,
+    private_key_path: String,
+    ip: String,
+    port: String,
+    command: String,
 }
 
-impl<'a> Process<'a> {
+#[allow(dead_code)]
+impl Process {
     fn new(
-        username: &'a str,
-        private_key_path: &'a str,
-        ip: &'a str,
-        port: &'a str,
-        command: &'a str,
-    ) -> Process<'a> {
+        username: String,
+        private_key_path: String,
+        ip: String,
+        port: String,
+        command: String,
+    ) -> Process {
         return Process {
             username,
             private_key_path,
@@ -35,11 +41,16 @@ impl<'a> Process<'a> {
         let mut sess = Session::new().unwrap();
         sess.set_tcp_stream(tcp.unwrap());
         sess.handshake().unwrap();
-        sess.userauth_pubkey_file(self.username, None, Path::new(self.private_key_path), None)
-            .unwrap();
+        sess.userauth_pubkey_file(
+            &self.username,
+            None,
+            Path::new(&self.private_key_path),
+            None,
+        )
+        .unwrap();
 
         let mut channel = sess.channel_session().unwrap();
-        channel.exec(self.command).unwrap();
+        channel.exec(&self.command).unwrap();
         let mut s = String::new();
         channel.read_to_string(&mut s).unwrap();
         return s;
@@ -48,26 +59,17 @@ impl<'a> Process<'a> {
 
 #[tokio::main]
 async fn main() {
-    let mut processes: Vec<Process> = Vec::new();
-    let mut tokio_tx_handles = Vec::new();
-    let mut tokio_rx_handles = Vec::new();
-
-    processes.push(Process::new(
-        "zostaw".into(),
-        "/Users/zostaw/.ssh/main_key".into(),
-        "192.168.1.171".into(),
-        "22".into(),
-        "ls -latr".into(),
-    ));
-    processes.push(Process::new(
-        "zostaw".into(),
-        "/Users/zostaw/.ssh/main_key".into(),
-        "192.168.1.171".into(),
-        "22".into(),
-        "ps -ef | grep ssh".into(),
-    ));
+    let mut hosts_file = File::open("hosts.json")
+        .or(File::open("hosts.json.example"))
+        .expect("Expected 'hosts.json' or 'hosts.json.example', but cannot be found in current directory.");
+    let mut hosts_file_buff = String::new();
+    hosts_file.read_to_string(&mut hosts_file_buff).unwrap();
+    let mut processes: Vec<Process> =
+        serde_json::from_str(&hosts_file_buff).expect("JSON was not well-formatted.");
 
     // tx, rx spawn
+    let mut tokio_tx_handles = Vec::new();
+    let mut tokio_rx_handles = Vec::new();
     while let Some(process) = processes.pop() {
         let (tx, rx) = channel();
         tokio_tx_handles.push(tokio::spawn(async move {
