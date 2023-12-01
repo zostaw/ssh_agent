@@ -82,11 +82,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
             }
         }));
     }
-    let rx_tokio_handle = tokio::spawn(async move {
-        loop {
-            println!("Fetched: {:?}", rx.recv().unwrap());
-        }
-    });
+    let rx_tokio_handle =
+        tokio::spawn(async move {
+            loop {
+                println!("Fetched: {:?}", rx.recv().unwrap());
+            }
+        });
 
     let _ = rx_tokio_handle.await;
     Ok(())
