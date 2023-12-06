@@ -4,28 +4,30 @@ use std::io::prelude::*;
 use std::net::TcpStream;
 use std::path::Path;
 use std::sync::mpsc::{channel, Sender};
+use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
 // defines how often to sleep between ssh calls
 const DELAY: std::time::Duration = std::time::Duration::from_millis(100);
 
+#[serde_with::skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
 struct Process {
-    username: String,
-    private_key_path: String,
+    username: Option<String>,
+    private_key_path: Option<String>,
     ip: String,
-    port: String,
+    port: Option<String>,
     command: String,
 }
 
 #[allow(dead_code)]
 impl Process {
     fn new(
-        username: String,
-        private_key_path: String,
+        username: Option<String>,
+        private_key_path: Option<String>,
         ip: String,
-        port: String,
+        port: Option<String>,
         command: String,
     ) -> Process {
         return Process {
@@ -38,19 +40,39 @@ impl Process {
     }
 
     async fn ssh_request(&self) -> Result<String, Box<dyn std::error::Error>> {
-        let tcp = TcpStream::connect(format!("{}:{}", self.ip, self.port));
+        let defaults: HashMap<&str, &str> = HashMap::from([("user", "kplus"), ("ssh_key_path", "id_rsa"), ("port", "22")]);
+
+        let username = match &self.username {
+            Some(user) => user,
+            None => defaults["user"],
+        };
+
+        let port = match &self.port {
+            Some(port) => port,
+            None => defaults["port"],
+        };
+
+        println!("Program: {:?}", self);
+        let private_key_path = match &self.private_key_path {
+            Some(key) => key,
+            None => defaults["ssh_key_path"],
+        };
+
+        let tcp = TcpStream::connect(format!("{}:{}", self.ip, port));
         let mut sess = Session::new()?;
         sess.set_tcp_stream(tcp?);
         sess.handshake()?;
         sess.userauth_pubkey_file(
-            &self.username,
+            &username,
             None,
-            Path::new(&self.private_key_path),
+            &Path::new(&private_key_path),
             None,
         )?;
+        println!("after initiation of session");
 
         let mut channel = sess.channel_session()?;
         channel.exec(&self.command)?;
+        println!("After execution");
         let mut s = String::new();
         channel.read_to_string(&mut s)?;
         return Ok(s);
