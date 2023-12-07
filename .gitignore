@@ -1,5 +1,7 @@
 /target
 Cargo.lock
 hosts.json
+hosts.json.many
 .vscode
 id_rsa
+my_db

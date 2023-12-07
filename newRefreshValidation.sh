@@ -48,7 +48,7 @@ GET_DATE_LOCAL='date +%d/%m/%Y'
 GET_DB_DATE="if [ -e /nfs/vol5/csrepository/getDBDate.sh ]; then /nfs/vol5/csrepository/getDBDate.sh ; else echo missing_repository ; fi"
 
 GET_DATASERVER="grep DBMS_TYPE /kenvng/home/kplus/dist/entities/Standalone/config/kplus.params | grep -v ENTITY | awk '{print \$2}'"
-GET_DBSERVER_IP="nslookup \$(grep DATASERVER_HOST /kenvng/home/kplus/dist/entities/Standalone/config/kplus.params | awk '{print \$2}') | 
+GET_DBSERVER_IP="nslookup \$(grep DATASERVER_HOST /kenvng/home/kplus/dist/entities/Standalone/config/kplus.params | awk '{print \$2}') |
     grep -A2 Non-authoritative | grep Address | awk '{print \$2}'"
 GET_DB_VERSION="if [ -e /nfs/vol5/csrepository/getDBVersion.sh ]; then /nfs/vol5/csrepository/getDBVersion.sh ; else echo missing_repository ; fi"
 
@@ -81,7 +81,7 @@ rm tmp_new_validation.txt
 }
 
 getZonesWithModules() {
-    
+
 $ZODCLIENT "nextgen_cs_support nextgen_cs_support_gdn" "--action search --ls --parseable --format 'Booted,FQDN,Usage' --desc keys" | sed 's/.misys.global.ad//g' > $PORTAL_RESOURCES_DIR/zones_with_keys.txt
 $PYTHONBIN $PORTAL_BASE_DIR/app/syncModules.py
 }
@@ -94,22 +94,22 @@ do
     # cd $WORKDIR
     case $ZONE in
         yes)
-                
+
             PROCESS_ZONE="TRUE"
             ;;
-        
+
         no)
-                                                        
+
             PROCESS_ZONE="FALSE"
             ;;
-        
+
         #the default case, the base starting point for gathering data for our ONLINE internal zones
         *)
 
             echo "zone_host::$ZONE"
             if [ $PROCESS_ZONE = "TRUE" ]
             then
-                                                                                                                                    
+
                 sshpass -e ssh -o StrictHostKeyChecking=no kplus@$ZONE "echo -n zone_ip:: ; $GET_IP ;
                                             echo -n zone_kplusver:: ; $GET_KPLUS_VER ;
                                             echo -n zone_kplustp:: ; if [ -e $KPLUSTP_DIR ]; then echo K+TP_YES ; else echo K+TP_NO ; fi ;
@@ -129,12 +129,12 @@ do
                                             echo -n zone_dbver:: ; $GET_DB_VERSION"
 #this next part is not pretty, it is necesarry
                 sshpass -e ssh kplus@$ZONE "echo -n zone_kms:: ; if [[ -n \$(eval $kmsPID) ]]; then echo KMS_ON ; else echo KMS_OFF ; fi ;
-			echo -n zone_klws:: ; if [[ -n \$(eval $klwsPID) ]]; then echo KLWS_ON ; else echo KLWS_OFF ; fi ; 
-			echo -n zone_kdews:: ; if [[ -n \$(eval $kdewsPID) ]]; then echo KDEWS_ON ; else echo KDEWS_OFF ; fi ; 
+			echo -n zone_klws:: ; if [[ -n \$(eval $klwsPID) ]]; then echo KLWS_ON ; else echo KLWS_OFF ; fi ;
+			echo -n zone_kdews:: ; if [[ -n \$(eval $kdewsPID) ]]; then echo KDEWS_ON ; else echo KDEWS_OFF ; fi ;
 			echo -n zone_krth:: ; if [[ -n \$(eval $krthPID) ]]; then echo KRTH_ON ; else echo KRTH_OFF ; fi ;
-			echo -n zone_realtime:: ; if [[ -n \$(eval $realtimeSERVER) ]]; 
-				then if [ $( printf '$('"$realtimeSERVERstatus"')' ) = "Up" ] ; 
-					then echo $( printf '$('"$realtimeSERVERname"')_ON' ) ; else echo $( printf '$('"$realtimeSERVERname"')_OFF' ) ; fi 
+			echo -n zone_realtime:: ; if [[ -n \$(eval $realtimeSERVER) ]];
+				then if [ $( printf '$('"$realtimeSERVERstatus"')' ) = "Up" ] ;
+					then echo $( printf '$('"$realtimeSERVERname"')_ON' ) ; else echo $( printf '$('"$realtimeSERVERname"')_OFF' ) ; fi
 				else echo REALTIME_NO ; fi ;
             if [[ \$(eval $realtimeSERVERname) = 'RTMD' ]] ; then echo -n zone_rtmd_ver:: ; $GET_RTMD_VERSION ; fi ;
 			echo -n zone_idn:: ; if [[ -n \$(eval $realtimeIDN) ]]; then if [ $( printf '$('"$realtimeIDNstatus"')' ) = "Up" ] ; then echo IDN_ON ; else echo IDN_OFF ; fi else echo IDN_OFF ; fi "
@@ -157,7 +157,7 @@ do
 
                         ZONENAME=`echo $ZONE | sed 's/supvkenv/kzone/g'`
                         ;;
-                    
+
                     #csvnext zones
                     csvnext*)
 
@@ -175,7 +175,7 @@ do
 
                 echo zone_ip::1.1.1.1 ;
                 echo -n zone_kplusver:: ; $ZODCLIENT "$ZOD_DOMAIN" "--zonename $ZONENAME --action search --ls --parseable --format 'Disk'" | sed 's/,/\n/g' | grep home.kplus.3 | awk -F. '{print $3}' | sed 's/./&./1;s/./&./3;s/./&./5' ;
-                echo zone_os::$ZONE_OS ; echo zone_dataserver::DB ; echo `zone_dbdate::$GET_DATE_LOCAL` ; echo zone_kplustp::K+TP_? ; echo zone_kgr::KGR_? ; 
+                echo zone_os::$ZONE_OS ; echo zone_dataserver::DB ; echo `zone_dbdate::$GET_DATE_LOCAL` ; echo zone_kplustp::K+TP_? ; echo zone_kgr::KGR_? ;
                 echo zone_kms::unknown; echo zone_klws::unknown; echo zone_kdews::unknown; echo zone_krth::unknown; echo zone_realtime::unknown; echo zone_idn::unknown; echo zone_status::DOWN
             fi
             ;;
